@@ -10,5 +10,5 @@ ADC for the specific matchup.
 2. Pprint (Optional, will require editing line 86)
 
 # Running the Code:
-Make sure that the path to your chromedriver executable is correct.
+Make sure that the path to your chromedriver executable is correct, then just run champion.py
 
