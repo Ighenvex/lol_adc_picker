@@ -17,7 +17,7 @@ def process_matches(matches: str):
 def scrape_link(url, ally):
     """ally is a bool"""
     options = Options()
-    # options.add_argument("--headless") # Run Chrome in headless mode
+    options.add_argument("--headless") # Run Chrome in headless mode
     options.add_argument('log-level=3') # Hides non-essential warnings
     options.add_argument('--ignore-ssl-errors')
     options.add_argument('--ignore-certificate-errors')
