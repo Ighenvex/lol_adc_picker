@@ -1,4 +1,4 @@
-# best-adcs
+# Pick the best ADC in League of Legends
 Web scraper for u.gg that will determine the best ADC for your botlane matchup.
 
 The code uses the winrates for counter-pick and ADC-support duos to run a binomial distribution calculation, and will then
@@ -9,7 +9,4 @@ ADC for the specific matchup.
 1. Selenium
 2. Scipy
 3. Pprint (Optional, will require editing line 73)
-
-# Running the Code:
-Make sure that the path to your chromedriver executable is correct, then just run champion.py
 
