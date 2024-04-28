@@ -5,8 +5,4 @@ The code uses the winrates for counter-pick and ADC-support duos to run a binomi
 total the scores for each ADC. The final results will be on a scale of 0-100, with 100 being the statistically strongest
 ADC for the specific matchup.
 
-# Prerequisites
-1. Selenium
-2. Scipy
-3. Pprint (Optional, will require editing line 73)
 
