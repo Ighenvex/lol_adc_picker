@@ -114,5 +114,5 @@ if __name__ == "__main__":
 
     print()
     pp.pprint(final_ratings)
-    print(f"\nUnable to match: {not_matched}" if not_matched else None)
+    print(f"\nUnable to match: {not_matched}") if not_matched else None
     input(f"\nPress Enter to exit.")
