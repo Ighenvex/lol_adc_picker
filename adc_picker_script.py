@@ -19,9 +19,10 @@ def create_driver(port):
     chrome_options.add_argument('--ignore-ssl-errors')
     chrome_options.add_argument('--ignore-certificate-errors')
     chrome_options.add_argument(f'--port={port}')
-    
+
     driver = Chrome(options=chrome_options) #Selenium 4.6+ auto-manages the driver
     driver.implicitly_wait(3)
+    
     return driver
 
 def scrape_adc(adc, driver_port, mp_queue):
