@@ -18,8 +18,9 @@ def create_driver(port):
     chrome_options.add_argument('log-level=3') # Hides non-essential warnings
     chrome_options.add_argument('--ignore-ssl-errors')
     chrome_options.add_argument('--ignore-certificate-errors')
-
-    driver = Chrome(service=Service(ChromeDriverManager().install(), port=port), options=chrome_options)
+    chrome_options.add_argument(f'--port={port}')
+    
+    driver = Chrome(options=chrome_options) #Selenium 4.6+ auto-manages the driver
     driver.implicitly_wait(3)
     return driver
 
