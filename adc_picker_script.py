@@ -1,62 +1,73 @@
 from selenium.webdriver import Chrome
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 from scipy.stats import binom
 import pprint as pp
-import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor
 
 def process_matches(matches: str):
     "Removes commas, returns an int"
     return int(matches.replace(",", ""))
 
-def create_driver(port):
+def create_driver():
     "Returns a selenium chromedriver on port = port"
     chrome_options = Options()
     chrome_options.add_argument("--headless=new") # Run Chrome in headless mode
     chrome_options.add_argument('log-level=3') # Hides non-essential warnings
     chrome_options.add_argument('--ignore-ssl-errors')
     chrome_options.add_argument('--ignore-certificate-errors')
-    chrome_options.add_argument(f'--port={port}')
+
+    prefs = {"profile.managed_default_content_settings.images": 2,
+         "profile.managed_default_content_settings.fonts": 2}
+    chrome_options.add_experimental_option("prefs", prefs)
 
     driver = Chrome(options=chrome_options) #Selenium 4.6+ auto-manages the driver
     driver.implicitly_wait(3)
     
     return driver
 
-def scrape_adc(adc, driver_port, mp_queue):
-    driver = create_driver(driver_port)
+def scrape_adc(adc):
+    driver = create_driver()
     driver.get(f"https://u.gg/lol/champions/{adc}/matchups")
     
     rows = driver.find_elements(By.CSS_SELECTOR, "div.rt-tr-group")
     
     adc_ratings = {}
     for row in rows:
-        champion = row.find_element(By.CSS_SELECTOR, f"div.rt-td:nth-of-type(2)").text
-        wr = float(row.find_element(By.CSS_SELECTOR, f"div.rt-td:nth-of-type(3)").text[:-1]) / 100
-        matches = process_matches(row.find_element(By.CSS_SELECTOR, f"div.rt-td:nth-of-type(9)").text)
-        adc_ratings[champion] = (round(1 - binom.cdf(round(wr * matches), matches, 0.5), 5), matches)
+        tds = row.find_elements(By.CSS_SELECTOR, "div.rt-td")
+        if len(tds) >= 9:
+            champion = tds[1].text
+            wr = float(tds[2].text.rstrip('%')) / 100
+            matches = process_matches(tds[8].text)
+            adc_ratings[champion] = (
+                round(1 - binom.cdf(round(wr * matches), matches, 0.5), 5),
+                matches
+            )
 
     driver.quit()
-    mp_queue.put(["adc", adc_ratings])
+    return adc_ratings
 
-def scrape_support(supp, driver_port, mp_queue):
-    driver = create_driver(driver_port)
+def scrape_support(supp):
+    driver = create_driver()
     driver.get(f"https://u.gg/lol/champions/{supp}/duos")
     rows = driver.find_elements(By.CSS_SELECTOR, "div.rt-tr-group")
     
     supp_ratings = {}
     for row in rows:
-        champion = row.find_element(By.CSS_SELECTOR, f"div.rt-td:nth-of-type(3)").text
-        wr = float(row.find_element(By.CSS_SELECTOR, f"div.rt-td:nth-of-type(4)").text[:-1]) / 100
-        matches = process_matches(row.find_element(By.CSS_SELECTOR, f"div.rt-td:nth-of-type(10)").text)
-        supp_ratings[champion] = (round(binom.cdf(round(wr * matches), matches, 0.5), 5), matches)
+        tds = row.find_elements(By.CSS_SELECTOR, "div.rt-td")
+        if len(tds) >= 10:
+            champion = tds[2].text
+            wr = float(tds[3].text.rstrip('%')) / 100
+            matches = process_matches(tds[9].text)
+            supp_ratings[champion] = (
+                round(binom.cdf(round(wr * matches), matches, 0.5), 5),
+                matches
+            )
 
     driver.quit()
-    mp_queue.put(["supp", supp_ratings])
+    return supp_ratings
 
-def combine_ratings(counters, duos):
+def combine_ratings(counters: dict, duos: dict):
     "Returns final sorted dict of ratings, and the set of unmatched champions"
 
     combined_ratings = {}
@@ -71,7 +82,7 @@ def combine_ratings(counters, duos):
     not_matched = set(counters).difference(duos)
     for champ in set(duos).difference(counters):
         not_matched.add(champ)
-    not_matched.remove(enemy_adc.title())
+    not_matched.remove(enemy_adc.title()) if enemy_adc.title() in not_matched else None
 
     return sorted_ratings, not_matched
 
@@ -93,26 +104,17 @@ def _pprint_dict(self, object, stream, indent, allowance, context, level):
 if __name__ == "__main__":
     pp.PrettyPrinter._dispatch[dict.__repr__] = _pprint_dict
 
-    queue = mp.Queue()
-
     enemy_adc = input("Enemy ADC: ")
     ally_supp = input("Ally Support: ")
 
-    p1 = mp.Process(target=scrape_adc, args=(enemy_adc, 9515, queue))
-    p2 = mp.Process(target=scrape_support, args=(ally_supp, 9516, queue))
-    p1.start()
-    p2.start()
-    p1.join()
-    p2.join()
+    with ProcessPoolExecutor() as executor:
+        future_adc = executor.submit(scrape_adc, enemy_adc)
+        future_supp = executor.submit(scrape_support, ally_supp)
 
-    x, y = queue.get(), queue.get()
-    # not guaranteed which dict was added to the queue first
-    if x[0] == "adc":
-        counters, duos = x[1], y[1]
-    else:
-        counters, duos = y[1], x[1]
+        adcs = future_adc.result()
+        supports = future_supp.result()
 
-    final_ratings, not_matched = combine_ratings(counters, duos)
+    final_ratings, not_matched = combine_ratings(counters=adcs, duos=supports)
 
     print()
     pp.pprint(final_ratings)
