@@ -1,7 +1,7 @@
 from selenium.webdriver import Chrome
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from scipy.stats import binom
+from scipy.stats import binomtest
 import pprint as pp
 from concurrent.futures import ProcessPoolExecutor
 
@@ -40,7 +40,7 @@ def scrape_adc(adc):
             wr = float(tds[2].text.rstrip('%')) / 100
             matches = process_matches(tds[8].text)
             adc_ratings[champion] = (
-                round(1 - binom.cdf(round(wr * matches), matches, 0.5), 5),
+                1 - binomtest(int(wr * matches), matches, p=0.5).pvalue,
                 matches
             )
 
@@ -60,7 +60,7 @@ def scrape_support(supp):
             wr = float(tds[3].text.rstrip('%')) / 100
             matches = process_matches(tds[9].text)
             supp_ratings[champion] = (
-                round(binom.cdf(round(wr * matches), matches, 0.5), 5),
+                1 - binomtest(int(wr * matches), matches, p=0.5).pvalue,
                 matches
             )
 
